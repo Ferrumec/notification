@@ -1841,7 +1841,10 @@ dependencies = [
  "event-stream",
  "ferrumec",
  "push",
+ "serde",
  "serde_json",
+ "sqlx",
+ "tracing",
 ]
 
 [[package]]
@@ -2833,6 +2836,8 @@ dependencies = [
  "serde_json",
  "sha2",
  "sqlx-core",
+ "sqlx-mysql",
+ "sqlx-postgres",
  "sqlx-sqlite",
  "syn",
  "url",
@@ -2869,6 +2874,7 @@ dependencies = [
  "percent-encoding",
  "rand 0.8.6",
  "rsa",
+ "serde",
  "sha1 0.10.6",
  "sha2",
  "smallvec",

@@ -8,7 +8,7 @@ use ferrumec::{Emailer, crypto::Validate};
 use push::Config;
 use serde_json::from_str;
 use std::sync::Arc;
-
+mod preferences;
 pub struct Module {
     emailer: Arc<dyn Emailer>,
     push: Arc<Config>,
