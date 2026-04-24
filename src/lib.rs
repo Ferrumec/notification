@@ -1,14 +1,16 @@
 use actix_web::web::ServiceConfig;
 use async_trait::async_trait;
-use emailgrid::EmailingContext;
+use ferrumec::deps::email::EmailingContext;
 use event_stream::{EventStream, Handler};
-use ferrumec::crypto::Validate;
+use ferrumec::deps::signers::Validate;
 use push::Config;
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 mod preferences;
+
+#[derive(Clone)]
 pub struct Module {
     emailer: EmailingContext,
     push: Arc<Config>,
@@ -58,7 +60,7 @@ impl Handler for OnNotification {
 }
 
 impl Module {
-    pub fn new(
+    pub async fn new(
         pool: Pool<Sqlite>,
         emailer: EmailingContext,
         validator: Arc<dyn Validate>,
@@ -70,14 +72,14 @@ impl Module {
             push,
             pool,
         };
-        module.subscribe(es);
+        module.subscribe(es).await;
         module
     }
 
-    pub fn configure(&self, cfg: &mut ServiceConfig, namespace: &str) {
+    pub fn config(&self, cfg: &mut ServiceConfig, namespace: &str) {
         self.push.config(cfg, namespace);
     }
-    pub fn subscribe(&self, es: Arc<dyn EventStream>) {
+    pub async fn subscribe(&self, es: Arc<dyn EventStream>) {
         es.clone().subscribe(
             "notification".to_string(),
             Arc::new(OnNotification {
@@ -86,6 +88,6 @@ impl Module {
                 emailer: self.emailer.clone(),
                 pool: self.pool.clone(),
             }),
-        );
+        ).await;
     }
 }

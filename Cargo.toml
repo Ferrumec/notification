@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 event-stream = { git = "https://github.com/Austin-rgb/event-stream" }
 push = { git = "https://github.com/Austin-rgb/push" }
-ferrumec = { git = "https://github.com/Austin-rgb/ferrumec" }
+ferrumec = { git = "https://github.com/Austin-rgb/ferrumec", features=["email"] }
 actix-web = "4.13.0"
 serde_json = "1.0.149"
 async-trait = "0.1.89"
@@ -16,8 +16,9 @@ serde = "1.0.228"
 uuid = "1.23.1"
 chrono = { version = "0.4.44", features = ["serde"] }
 emailgrid = { git = "https://github.com/Austin-rgb/emailgrid" }
+
 [patch."https://github.com/Austin-rgb/ferrumec"]
-ferrumec={path="../ferrumec"}
+ferrumec={path="../ferrumec", features=["email"]}
 
 [patch."https://github.com/Austin-rgb/push"]
 push={path="../push"}
