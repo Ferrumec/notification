@@ -3,6 +3,8 @@ use super::db::{Defaults, Preferences};
 use actix_web::web;
 use actix_web::{HttpResponse, Responder};
 use serde::Deserialize;
+use tracing::error; // Added for logging
+
 #[derive(Clone)]
 pub struct AppState {
     pub defaults: Defaults,
@@ -30,7 +32,10 @@ pub async fn set_default(
 ) -> impl Responder {
     match state.defaults.set(&body.subject, body.channel).await {
         Ok(_) => HttpResponse::Ok().finish(),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            error!(error = %e, subject = %body.subject, "Failed to set default channel");
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
@@ -41,7 +46,10 @@ pub async fn get_default(
     match state.defaults.get(&query.subject).await {
         Ok(Some(channel)) => HttpResponse::Ok().json(channel),
         Ok(None) => HttpResponse::NotFound().finish(),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            error!(error = %e, subject = %query.subject, "Failed to get default channel");
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
@@ -72,7 +80,15 @@ pub async fn set_preference(
         .await
     {
         Ok(_) => HttpResponse::Ok().finish(),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            error!(
+                error = %e, 
+                user = %body.user, 
+                subject = %body.subject, 
+                "Failed to set user preference"
+            );
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
 
@@ -83,6 +99,15 @@ pub async fn get_preference(
     match state.preferences.get(&query.user, &query.subject).await {
         Ok(Some(channel)) => HttpResponse::Ok().json(channel),
         Ok(None) => HttpResponse::NotFound().finish(),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+        Err(e) => {
+            error!(
+                error = %e, 
+                user = %query.user, 
+                subject = %query.subject, 
+                "Failed to get user preference"
+            );
+            HttpResponse::InternalServerError().body(e.to_string())
+        }
     }
 }
+
