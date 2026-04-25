@@ -1,5 +1,6 @@
 mod channel;
 pub mod db;
 mod handlers;
-pub mod routes;
+mod routes;
 pub use channel::Channel;
+pub use routes::config;

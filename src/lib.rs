@@ -1,3 +1,4 @@
+use actix_web::web;
 use actix_web::web::ServiceConfig;
 use async_trait::async_trait;
 use event_stream::{EventStream, Handler};
@@ -19,12 +20,12 @@ pub struct Module {
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 struct OnNotification {
-    es: Arc<dyn EventStream>,
     emailer: EmailingContext,
     push: Arc<Config>,
     resolver: Preferences,
 }
 use crate::prefs::Channel;
+use crate::prefs::config;
 use crate::prefs::db::{Defaults, Preferences};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,13 +52,16 @@ impl Handler for OnNotification {
         {
             Ok(r) => r.unwrap(),
             Err(e) => {
-                eprintln!("Error in reading preferences");
+                eprintln!("Error in reading preferences: {e}");
                 return ();
             }
         };
         match channel {
             Channel::Email => {
-                self.emailer.send(subject, message);
+                match self.emailer.send(subject, message).await {
+                    Ok(_) => (),
+                    Err(e) => eprintln!("Error in sending email: {}", e),
+                };
             }
             Channel::Push => {
                 self.push.push(event.producer, message);
@@ -86,20 +90,28 @@ impl Module {
     }
 
     pub fn config(&self, cfg: &mut ServiceConfig, namespace: &str) {
-        self.push.config(cfg, namespace);
+        cfg.service(
+            web::scope(namespace)
+                .configure(|cfg| self.push.config(cfg, "/push"))
+                .configure(config),
+        );
     }
     pub async fn subscribe(&self, es: Arc<dyn EventStream>) {
         let defaults = Defaults::new(self.pool.clone());
-        es.clone()
+        match es
+            .clone()
             .subscribe(
                 "notification".to_string(),
                 Arc::new(OnNotification {
-                    es,
                     push: self.push.clone(),
                     emailer: self.emailer.clone(),
                     resolver: Preferences::new(self.pool.clone(), defaults),
                 }),
             )
-            .await;
+            .await
+        {
+            Ok(_) => (),
+            Err(e) => eprintln!("Error in subscribing to event stream: {e}"),
+        };
     }
 }
