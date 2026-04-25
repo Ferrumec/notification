@@ -91,7 +91,7 @@ state:state.clone(),
 
     pub fn config(&self, cfg: &mut ServiceConfig, namespace: &str) {
         cfg.service(
-            web::scope(namespace).app_data(self.state.clone())
+            web::scope(namespace).app_data(web::Data::from(self.state.clone()))
                 .configure(|cfg| self.push.config(cfg, "/push"))
                 .configure(config),
         );
