@@ -2,7 +2,7 @@ use super::channel::Channel;
 use anyhow::Result;
 use moka::future::Cache;
 use sqlx::{Pool, Sqlite};
-
+use std::sync::Arc;
 // ---------------------------------------------------------------------------
 // Defaults
 // ---------------------------------------------------------------------------
@@ -63,11 +63,11 @@ impl Defaults {
 pub struct Preferences {
     db: Pool<Sqlite>,
     cache: Cache<(String, String), Channel>, // (user, subject) -> Channel
-    defaults: Defaults,
+    defaults: Arc<Defaults>,
 }
 
 impl Preferences {
-    pub fn new(db: Pool<Sqlite>, defaults: Defaults) -> Self {
+    pub fn new(db: Pool<Sqlite>, defaults: Arc<Defaults>) -> Self {
         Self {
             db,
             cache: Cache::new(1000),

@@ -15,18 +15,17 @@ mod prefs;
 pub struct Module {
     emailer: EmailingContext,
     push: Arc<Config>,
-    pool: Pool<Sqlite>,
+state:Arc<AppState>,
 }
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 struct OnNotification {
+state:Arc<AppState>,
     emailer: EmailingContext,
     push: Arc<Config>,
-    resolver: Preferences,
 }
-use crate::prefs::Channel;
+use crate::prefs::{AppState,Channel};
 use crate::prefs::config;
-use crate::prefs::db::{Defaults, Preferences};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
@@ -46,7 +45,7 @@ impl Handler for OnNotification {
         let message = String::from_utf8(message).unwrap();
         let event: Event = from_str(&message).unwrap();
         let channel = match self
-            .resolver
+            .state.preferences
             .get(&event.user_id.unwrap().to_string(), &subject)
             .await
         {
@@ -80,24 +79,24 @@ impl Module {
         es: Arc<dyn EventStream>,
     ) -> Self {
         let push = Arc::new(Config::new(validator));
-        let module = Self {
+let state=Arc::new(AppState::new(pool.clone()));        
+let module = Self {
             emailer,
+state:state.clone(),
             push,
-            pool,
         };
-        module.subscribe(es).await;
+        module.subscribe(es,state).await;
         module
     }
 
     pub fn config(&self, cfg: &mut ServiceConfig, namespace: &str) {
         cfg.service(
-            web::scope(namespace)
+            web::scope(namespace).app_data(self.state.clone())
                 .configure(|cfg| self.push.config(cfg, "/push"))
                 .configure(config),
         );
     }
-    pub async fn subscribe(&self, es: Arc<dyn EventStream>) {
-        let defaults = Defaults::new(self.pool.clone());
+    pub async fn subscribe(&self, es: Arc<dyn EventStream>,state:Arc<AppState>,) {
         match es
             .clone()
             .subscribe(
@@ -105,7 +104,7 @@ impl Module {
                 Arc::new(OnNotification {
                     push: self.push.clone(),
                     emailer: self.emailer.clone(),
-                    resolver: Preferences::new(self.pool.clone(), defaults),
+state
                 }),
             )
             .await
