@@ -1,14 +1,14 @@
 use actix_web::web::ServiceConfig;
 use async_trait::async_trait;
-use ferrumec::deps::email::EmailingContext;
 use event_stream::{EventStream, Handler};
+use ferrumec::deps::email::EmailingContext;
 use ferrumec::deps::signers::Validate;
 use push::Config;
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
-mod preferences;
+mod prefs;
 
 #[derive(Clone)]
 pub struct Module {
@@ -22,10 +22,11 @@ struct OnNotification {
     es: Arc<dyn EventStream>,
     emailer: EmailingContext,
     push: Arc<Config>,
-    pool: Pool<Sqlite>,
+    resolver: Preferences,
 }
-use crate::preferences::db::resolve_channels;
-use crate::preferences::models::Channel;
+use crate::prefs::Channel;
+use crate::prefs::db::{Defaults, Preferences};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
     pub event_id: Uuid,
@@ -43,10 +44,17 @@ impl Handler for OnNotification {
     async fn handle(&self, subject: String, message: Vec<u8>) {
         let message = String::from_utf8(message).unwrap();
         let event: Event = from_str(&message).unwrap();
-        let channel =
-            &mut resolve_channels(&self.pool, &event.user_id.unwrap().to_string(), &subject)
-                .await
-                .unwrap()[0];
+        let channel = match self
+            .resolver
+            .get(&event.user_id.unwrap().to_string(), &subject)
+            .await
+        {
+            Ok(r) => r.unwrap(),
+            Err(e) => {
+                eprintln!("Error in reading preferences");
+                return ();
+            }
+        };
         match channel {
             Channel::Email => {
                 self.emailer.send(subject, message);
@@ -55,6 +63,7 @@ impl Handler for OnNotification {
                 self.push.push(event.producer, message);
             }
             Channel::Sms => (),
+            Channel::InApp => (),
         }
     }
 }
@@ -80,14 +89,17 @@ impl Module {
         self.push.config(cfg, namespace);
     }
     pub async fn subscribe(&self, es: Arc<dyn EventStream>) {
-        es.clone().subscribe(
-            "notification".to_string(),
-            Arc::new(OnNotification {
-                es,
-                push: self.push.clone(),
-                emailer: self.emailer.clone(),
-                pool: self.pool.clone(),
-            }),
-        ).await;
+        let defaults = Defaults::new(self.pool.clone());
+        es.clone()
+            .subscribe(
+                "notification".to_string(),
+                Arc::new(OnNotification {
+                    es,
+                    push: self.push.clone(),
+                    emailer: self.emailer.clone(),
+                    resolver: Preferences::new(self.pool.clone(), defaults),
+                }),
+            )
+            .await;
     }
 }

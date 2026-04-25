@@ -16,6 +16,8 @@ serde = "1.0.228"
 uuid = "1.23.1"
 chrono = { version = "0.4.44", features = ["serde"] }
 emailgrid = { git = "https://github.com/Austin-rgb/emailgrid" }
+moka = { version = "0.12.15", features = ["future"] }
+anyhow = "1.0.102"
 
 [patch."https://github.com/Austin-rgb/ferrumec"]
 ferrumec={path="../ferrumec", features=["email"]}

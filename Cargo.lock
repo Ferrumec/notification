@@ -2027,11 +2027,13 @@ name = "notification"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "anyhow",
  "async-trait",
  "chrono",
  "emailgrid",
  "event-stream",
  "ferrumec",
+ "moka",
  "push",
  "serde",
  "serde_json",
