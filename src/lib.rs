@@ -1,9 +1,9 @@
 use actix_web::web;
 use actix_web::web::ServiceConfig;
+use actixutils::{Identity, OrphanWrapper, Validate};
 use async_trait::async_trait;
+use emailgrid::EmailingContext;
 use event_stream::{EventStream, Handler};
-use ferrumec::deps::email::EmailingContext;
-use ferrumec::deps::signers::Validate;
 use push::Config;
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
@@ -15,17 +15,17 @@ mod prefs;
 pub struct Module {
     emailer: EmailingContext,
     push: Arc<Config>,
-state:Arc<AppState>,
+    state: Arc<AppState>,
 }
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 struct OnNotification {
-state:Arc<AppState>,
+    state: Arc<AppState>,
     emailer: EmailingContext,
     push: Arc<Config>,
 }
-use crate::prefs::{AppState,Channel};
 use crate::prefs::config;
+use crate::prefs::{AppState, Channel};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
@@ -45,7 +45,8 @@ impl Handler for OnNotification {
         let message = String::from_utf8(message).unwrap();
         let event: Event = from_str(&message).unwrap();
         let channel = match self
-            .state.preferences
+            .state
+            .preferences
             .get(&event.user_id.unwrap().to_string(), &subject)
             .await
         {
@@ -75,28 +76,29 @@ impl Module {
     pub async fn new(
         pool: Pool<Sqlite>,
         emailer: EmailingContext,
-        validator: Arc<dyn Validate>,
+        validator: OrphanWrapper<Arc<dyn Validate<Identity>>>,
         es: Arc<dyn EventStream>,
     ) -> Self {
-        let push = Arc::new(Config::new(validator));
-let state=Arc::new(AppState::new(pool.clone()));        
-let module = Self {
+        let push = Arc::new(Config::new(validator.0));
+        let state = Arc::new(AppState::new(pool.clone()));
+        let module = Self {
             emailer,
-state:state.clone(),
+            state: state.clone(),
             push,
         };
-        module.subscribe(es,state).await;
+        module.subscribe(es, state).await;
         module
     }
 
     pub fn config(&self, cfg: &mut ServiceConfig, namespace: &str) {
         cfg.service(
-            web::scope(namespace).app_data(web::Data::from(self.state.clone()))
+            web::scope(namespace)
+                .app_data(web::Data::from(self.state.clone()))
                 .configure(|cfg| self.push.config(cfg, "/push"))
                 .configure(config),
         );
     }
-    pub async fn subscribe(&self, es: Arc<dyn EventStream>,state:Arc<AppState>,) {
+    pub async fn subscribe(&self, es: Arc<dyn EventStream>, state: Arc<AppState>) {
         match es
             .clone()
             .subscribe(
@@ -104,7 +106,7 @@ state:state.clone(),
                 Arc::new(OnNotification {
                     push: self.push.clone(),
                     emailer: self.emailer.clone(),
-state
+                    state,
                 }),
             )
             .await
