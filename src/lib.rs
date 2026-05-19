@@ -77,7 +77,7 @@ impl Module {
         pool: Pool<Sqlite>,
         emailer: EmailingContext,
         validator: OrphanWrapper<Arc<dyn Validate<Identity>>>,
-        es: Arc<dyn EventStream>,
+        es: event_stream::OrphanWrapper<Arc<dyn EventStream>>,
     ) -> Self {
         let push = Arc::new(Config::new(validator.0));
         let state = Arc::new(AppState::new(pool.clone()));
@@ -86,7 +86,7 @@ impl Module {
             state: state.clone(),
             push,
         };
-        module.subscribe(es, state).await;
+        module.subscribe(es.0, state).await;
         module
     }
 
