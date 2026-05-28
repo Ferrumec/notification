@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 #event-stream = { git = "https://github.com/Austin-rgb/event-stream" }
 #push = { git = "https://github.com/Austin-rgb/push" }
-#ferrumec = { git = "https://github.com/Austin-rgb/ferrumec", }
 actix-web = "4.13.0"
 serde_json = "1.0.149"
 async-trait = "0.1.89"
@@ -21,9 +20,6 @@ anyhow = "1.0.102"
 actixutils = { path = "../actixutils" }
 emailgrid = { path = "../emailgrid" }
 
-#[patch."https://github.com/Austin-rgb/ferrumec"]
-ferrumec={path="../ferrumec"}
-
 #[patch."https://github.com/Austin-rgb/push"]
 push={path="../push"}
 
@@ -32,3 +28,4 @@ event-stream = { path = "../event-stream" }
 
 #[patch."https://github.com/Austin-rgb/emailgrid"]
 #emailgrid = { path = "../emailgrid" }
+mgk = { path = "../mgk" }
