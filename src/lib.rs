@@ -40,6 +40,7 @@ pub struct Module {
     emailer: Mgk,
     push_mgk: Mgk,
     push_: Config,
+    console: Mgk,
 }
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
@@ -101,15 +102,17 @@ impl Module {
             emailer: email,
             push_mgk,
             push_,
+            console,
         }
     }
 
     pub fn config(&self, cfg: &mut ServiceConfig, namespace: &str) {
         cfg.service(
             web::scope(namespace)
-                .configure(|cfg| self.push_.config(cfg, "/push"))
+                .configure(|cfg| self.push_.config(cfg, "/ws"))
                 .configure(|cfg| self.emailer.config(cfg, "/email"))
-                .configure(|cfg| self.push_mgk.config(cfg, "/push")),
+                .configure(|cfg| self.push_mgk.config(cfg, "/push"))
+                .configure(|cfg| self.console.config(cfg, "/console")),
         );
     }
 }
