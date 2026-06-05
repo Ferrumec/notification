@@ -3,15 +3,15 @@ use actix_web::web::ServiceConfig;
 use actixutils::{Identity, Validate};
 use emailgrid::EmailingContext;
 use event_stream::EventStream;
+use mgk::{Module as Mgk, Sender};
 use push::Config;
 use serde::{Deserialize, Serialize};
-
 use sqlx::{Pool, Sqlite};
+use std::env;
 use std::sync::Arc;
-use mgk::{Module as Mgk, Sender};
 
 struct Push(Config);
-
+struct Console;
 struct Email(EmailingContext);
 
 #[async_trait::async_trait]
@@ -23,8 +23,15 @@ impl Sender for Push {
 
 #[async_trait::async_trait]
 impl Sender for Email {
-    async fn send(&self, _address: String, subject: String, message: String) {
-        self.0.send(subject, message).await;
+    async fn send(&self, address: String, subject: String, message: String) {
+        let _ = self.0.send(address, subject, message).await;
+    }
+}
+
+#[async_trait::async_trait]
+impl Sender for Console {
+    async fn send(&self, address: String, subject: String, message: String) {
+        println!("message sent: address = {address}, subject = {subject}, message = {message}")
     }
 }
 
@@ -36,11 +43,6 @@ pub struct Module {
 }
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
-struct OnNotification {
-    emailer: EmailingContext,
-    push: Arc<Config>,
-}
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
@@ -54,6 +56,14 @@ pub struct Event {
     pub session_id: Option<Uuid>,
 }
 
+fn get_list(name: &str) -> Vec<String> {
+    env::var(name)
+        .expect(&format!("{name} not set"))
+        .split(",")
+        .map(|s| s.trim().to_string())
+        .collect()
+}
+
 impl Module {
     pub async fn new(
         pool: Pool<Sqlite>,
@@ -61,13 +71,32 @@ impl Module {
         validator: Arc<dyn Validate<Identity>>,
         es: Arc<dyn EventStream>,
     ) -> Self {
-        let console = Mgk::new(pool.clone(), es.clone()).await;
-        let push_ = Config::new(es, validator).await;
-        let push_mgk = console.clone().with_sender(Arc::new(Push(push_.clone())));
-        let email = console
-            .clone()
-            .with_sender(Arc::new(Email(emailer)) as Arc<dyn Sender>);
-        
+        let email_subjects = get_list("email.subjects");
+        let push_subjects = get_list("push.subjects");
+        let console_subjects = get_list("console.subjects");
+        let console = Mgk::new(
+            pool.clone(),
+            es.clone(),
+            Arc::new(Console {}),
+            console_subjects,
+        )
+        .await;
+        let push_ = Config::new(es.clone(), validator).await;
+        let push_mgk = Mgk::new(
+            pool.clone(),
+            es.clone(),
+            Arc::new(Push(push_.clone())),
+            push_subjects,
+        )
+        .await;
+        let email = Mgk::new(
+            pool.clone(),
+            es.clone(),
+            Arc::new(Email(emailer)) as Arc<dyn Sender>,
+            email_subjects,
+        )
+        .await;
+
         Self {
             emailer: email,
             push_mgk,
