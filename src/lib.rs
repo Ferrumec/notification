@@ -19,6 +19,9 @@ impl Sender for Push {
     async fn send(&self, _address: String, _subject: String, message: String) {
         self.0.push("push".to_string(), message);
     }
+    fn get_name(&self) -> std::string::String {
+        "push".to_string()
+    }
 }
 
 #[async_trait::async_trait]
@@ -26,12 +29,19 @@ impl Sender for Email {
     async fn send(&self, address: String, subject: String, message: String) {
         let _ = self.0.send(address, subject, message).await;
     }
+    fn get_name(&self) -> std::string::String {
+        "email".to_string()
+    }
 }
 
 #[async_trait::async_trait]
 impl Sender for Console {
     async fn send(&self, address: String, subject: String, message: String) {
         println!("message sent: address = {address}, subject = {subject}, message = {message}")
+    }
+
+    fn get_name(&self) -> std::string::String {
+        "console".to_string()
     }
 }
 
