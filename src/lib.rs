@@ -92,7 +92,7 @@ impl Module {
             console_subjects,
         )
         .await;
-        let push_ = Config::new(es.clone(), validator).await;
+        let push_ = Config::new(validator).await;
         let push_mgk = Mgk::new(
             pool.clone(),
             es.clone(),
