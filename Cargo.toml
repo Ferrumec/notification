@@ -10,8 +10,8 @@ sqlx = { version = "0.8.6", features = ["sqlite"] }
 serde = "1.0.228"
 uuid = "1.23.1"
 chrono = { version = "0.4.44", features = ["serde"] }
-actixutils = { path = "../actixutils" }
-emailgrid = { path = "../emailgrid" }
-push={path="../push"}
-event-stream = { path = "../event-stream" }
-mgk = { path = "../mgk" }
+actixutils = { git = "https://github.com/Austin-rgb/actixutils" }
+event-stream = { git = "https://github.com/Austin-rgb/event-stream" }
+emailgrid = { git = "https://github.com/Austin-rgb/emailgrid" }
+push = { git = "https://github.com/Austin-rgb/push" }
+mgk = { git = "https://github.com/Austin-rgb/mgk" }
